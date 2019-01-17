@@ -1,0 +1,22 @@
+[
+  {
+    "directory": "/home/pdietl/git/gpt_parser/bld",
+    "command": "cc -Iparse_gpt@exe -I. -I.. -I../libfort/lib -I/usr/include/uuid -fdiagnostics-color=always -pipe -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -g  -MD -MQ 'parse_gpt@exe/main.c.o' -MF 'parse_gpt@exe/main.c.o.d' -o 'parse_gpt@exe/main.c.o' -c ../main.c",
+    "file": "../main.c"
+  },
+  {
+    "directory": "/home/pdietl/git/gpt_parser/bld",
+    "command": "cc -Iparse_gpt@exe -I. -I.. -I../libfort/lib -I/usr/include/uuid -fdiagnostics-color=always -pipe -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -g  -MD -MQ 'parse_gpt@exe/libfort_lib_fort.c.o' -MF 'parse_gpt@exe/libfort_lib_fort.c.o.d' -o 'parse_gpt@exe/libfort_lib_fort.c.o' -c ../libfort/lib/fort.c",
+    "file": "../libfort/lib/fort.c"
+  },
+  {
+    "directory": "/home/pdietl/git/gpt_parser/bld",
+    "command": "cc -Iparse_gpt@exe -I. -I.. -I../libfort/lib -I/usr/include/uuid -fdiagnostics-color=always -pipe -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -g  -MD -MQ 'parse_gpt@exe/readint.c.o' -MF 'parse_gpt@exe/readint.c.o.d' -o 'parse_gpt@exe/readint.c.o' -c ../readint.c",
+    "file": "../readint.c"
+  },
+  {
+    "directory": "/home/pdietl/git/gpt_parser/bld",
+    "command": "cc -Iparse_gpt@exe -I. -I.. -I../libfort/lib -I/usr/include/uuid -fdiagnostics-color=always -pipe -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -g  -MD -MQ 'parse_gpt@exe/crc32.c.o' -MF 'parse_gpt@exe/crc32.c.o.d' -o 'parse_gpt@exe/crc32.c.o' -c ../crc32.c",
+    "file": "../crc32.c"
+  }
+]
