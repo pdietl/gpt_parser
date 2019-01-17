@@ -8,10 +8,16 @@
 #define GPT_HEADER_SIG_STR "EFI PART"
 
 struct gpt_header {
-    char     signature[8];
+    char     signature[9]; // 9 so we can print
     uint32_t revision;
     uint32_t header_size_bytes;
     uint32_t crc32_of_header;
+    
+    // Not in the real header, just for our use
+    char     header_crc_ok;
+    char     part_array_crc_ok;
+    //
+
     // 4 bytes of 0s here
     uint64_t lba_of_current;    // This header
     uint64_t lba_of_backup;     // The other one
