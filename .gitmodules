@@ -1,3 +1,6 @@
 [submodule "libfort"]
 	path = libfort
 	url = https://github.com/seleznevae/libfort
+[submodule "libcrc"]
+	path = libcrc
+	url = https://github.com/lammertb/libcrc.git

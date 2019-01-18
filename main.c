@@ -6,6 +6,8 @@
 #include <linux/fs.h>
 #include <string.h>
 #include <byteswap.h>
+#include <errno.h>
+#include <stdarg.h>
 #include "gpt.h"
 #include "readint.h"
 #include "fort.h"
@@ -13,6 +15,7 @@
 
 #define GUID_NUM_STR_BYTES 37
 #define NO 0
+#define MIN_HEADER_SIZE 92
 
 void show_help(const char *name)
 {
@@ -21,41 +24,21 @@ void show_help(const char *name)
             name);
 }
 
-void read_gpt_header(FILE *fp, struct gpt_header *hdr, int block_size)
+void fread_check(void *data, size_t size, size_t count, FILE *stream, const char *format, ...)
 {
-    uint32_t temp;
-    long offset, start_offset;
-    size_t i;
-    uint8_t t;
-
-    start_offset = ftell(fp);
-
-    hdr->header_crc_ok = NO;
-    hdr->part_array_crc_ok = NO;
-
-    // Clear out the string
-    memset(hdr->signature, 0, sizeof hdr->signature);
-
-    if (fread(hdr->signature, 1, 8, fp) != 8) {
-        perror("Error trying to read the GPT header signature");
-        exit(1);
+    if (fread(data, size, count, stream) != count) {
+        fprintf(stderr, "*** Errno %d: %s\n", errno, strerror(errno));
+        va_list args;
+        va_start(args, format);
+        fprintf(stderr, "*** ");
+        vfprintf(stderr, format, args);
+        va_end(args);
+        exit(EXIT_FAILURE);
     }
+}
 
-    hdr->revision = read_u32(fp);
-    hdr->header_size_bytes = read_u32(fp);
-    hdr->crc32_of_header = read_u32(fp);
-
-    temp = read_u32(fp);
-    if (temp != 0) {
-        fprintf(stderr, "Error corrupt GPT header - read non-zero 32 bits at offset 20\n");
-        exit(1);
-    }
-
-    hdr->lba_of_current = read_u64(fp);
-    hdr->lba_of_backup = read_u64(fp);
-    hdr->first_usable_lba = read_u64(fp);
-    hdr->last_usable_lba = read_u64(fp);
-
+void read_uuid(FILE *fp, uuid_t *d)
+{
     // Group numbering     1      2      3      4          5
     //   UUID binary is xxxx  =  xx  =  xx  =  xx  =  xxxxxx
     //          
@@ -71,23 +54,56 @@ void read_gpt_header(FILE *fp, struct gpt_header *hdr, int block_size)
         
     // The binary encoding:     12 db 7c 3b e4 7f 25 46 9c 00 b3 ae 6d c7 24 6d
 
-    if (fread(hdr->disk_guid, 1, 16, fp) != 16) {
-        perror("Error reading all 16 bytes of Disk GUID");
-        exit(1);
-    }
+    fread_check(*d, 1, sizeof (uuid_t), fp, "Error: could not read complete Disk GUID\n");
 
-    // This will be painful to convert lol
+    // This will be painful to convert...
 
-    *((uint32_t *)(hdr->disk_guid)) = bswap_32(*((uint32_t *)(hdr->disk_guid)));
-    *((uint16_t *)(hdr->disk_guid + 4)) = bswap_16(*((uint16_t *)(hdr->disk_guid + 4)));
-    *((uint16_t *)(hdr->disk_guid + 6)) = bswap_16(*((uint16_t *)(hdr->disk_guid + 6)));
+    *((uint32_t *)*d) = bswap_32(*((uint32_t *)(*d)));
+    *((uint16_t *)(*d + 4)) = bswap_16(*((uint16_t *)(*d + 4)));
+    *((uint16_t *)(*d + 6)) = bswap_16(*((uint16_t *)(*d + 6)));
+}
 
+void read_gpt_header(FILE *fp, struct gpt_header *hdr, int block_size)
+{
+    uint32_t temp;
+    long offset, start_offset;
+    size_t i;
+    uint8_t t;
+
+    start_offset = ftell(fp);
+
+    hdr->header_crc_ok = NO;
+    hdr->part_array_crc_ok = NO;
+    hdr->should_be_zeros = ~0L;
+
+    // Clear out the string
+    memset(hdr->signature, 0, sizeof hdr->signature);
+
+    fread_check(hdr->signature, sizeof *(hdr->signature), 
+        sizeof hdr->signature - 1, fp, 
+        "Error: attempting to read the GPT header signature failed!");
+
+    hdr->revision = read_u32(fp);
+    hdr->header_size_bytes = read_u32(fp);
+    hdr->crc32_of_header = read_u32(fp);
+    hdr->should_be_zeros = read_u32(fp);
+    hdr->lba_of_current = read_u64(fp);
+    hdr->lba_of_backup = read_u64(fp);
+    hdr->first_usable_lba = read_u64(fp);
+    hdr->last_usable_lba = read_u64(fp);
+    read_uuid(fp, &(hdr->disk_guid));
     hdr->lba_start_of_part_entries = read_u64(fp);
     hdr->num_part_entries = read_u32(fp);
     hdr->single_part_entry_size = read_u32(fp);
     hdr->crc32_of_part_array = read_u32(fp);
 
     offset = ftell(fp);
+
+    hdr->total_num_bytes_read = offset;
+
+    if (hdr->header_size_bytes != offset) {
+//        fprintf(stderr, "Error: GPT Header reported its size to be %ld, but we read exactly %ld bytes.\nWhile the GPT Header's size may increase in the future, it will always be >= 92 but less than one logical block size.\n");
+    }
 
     // The rest of the block must be filled with zeros
     for (i = 0; i < (block_size - (offset - start_offset)); ++i) {
@@ -137,12 +153,17 @@ void check_header_crc(FILE *fp, struct gpt_header *hdr, int block_size)
         exit(1);
     }
 
+
     // Now we need to zero-out the CRC we just read,
     // per the instructions for calculating the CRC
 
    *(((uint32_t *)(full_header)) + 4) = 0;
 
+    FILE *f = fopen("h", "w");
+    fwrite(full_header, 1, sizeof full_header, f);
+    
     crc32(full_header, sizeof full_header, &crc);
+    printf("%x\n", crc);
     hdr->header_crc_ok = (crc == hdr->crc32_of_header);
 }
 

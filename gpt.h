@@ -14,11 +14,12 @@ struct gpt_header {
     uint32_t crc32_of_header;
     
     // Not in the real header, just for our use
-    char     header_crc_ok;
-    char     part_array_crc_ok;
+    char        header_crc_ok;
+    char        part_array_crc_ok;
+    uint32_t    total_num_bytes_read;
     //
 
-    // 4 bytes of 0s here
+    uint32_t should_be_zeros;
     uint64_t lba_of_current;    // This header
     uint64_t lba_of_backup;     // The other one
     uint64_t first_usable_lba;  // For partitions
