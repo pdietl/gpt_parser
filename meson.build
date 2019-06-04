@@ -1,11 +1,8 @@
 project('GPT Parser', 'c')
 
-fort_inc = include_directories('libfort/lib')
+src = ['main.c', 'readint.c', 'crc32.c']
 
-src = ['main.c', 'libfort/lib/fort.c', 'readint.c', 'crc32.c']
-
-deps = [dependency('uuid')]
+deps = [dependency('uuid'), dependency('libfort')]
 
 executable('parse_gpt', sources : src, 
-    include_directories : fort_inc,
     dependencies : deps)
